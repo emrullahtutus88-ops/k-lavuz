@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kılavuz (diş) kontrolü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9ECEF;--panel:#fff;--ink:#141C24;--muted:#5A6672;--ok:#0B7A5F;--bad:#C42B16;--warn:#946B00;--line:#CDD4DA;--btn:#141C24;--btnt:#fff;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F151A;--panel:#18212A;--ink:#E7EDF2;--muted:#94A2AE;--ok:#3DC9A6;--bad:#FF7B64;--warn:#E6C04B;--line:#2A3641;--btn:#E7EDF2;--btnt:#0F151A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F151A;--panel:#18212A;--ink:#E7EDF2;--muted:#94A2AE;--ok:#3DC9A6;--bad:#FF7B64;--warn:#E6C04B;--line:#2A3641;--btn:#E7EDF2;--btnt:#0F151A;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px 16px 40px}
+h1{font-size:1.3rem;margin:0 0 2px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 14px;font-size:.9rem}
+.btn{display:block;width:100%;text-align:center;background:var(--btn);color:var(--btnt);border:0;border-radius:8px;padding:14px 18px;font:inherit;font-weight:600;cursor:pointer}
+.btn.ghost{display:inline-block;width:auto;background:transparent;color:var(--ink);border:1px solid var(--line);padding:8px 12px;font-weight:500;font-size:.88rem}
+.btn:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+#file{position:absolute;opacity:0;width:1px;height:1px}
+#sum{display:none;margin:14px 0 10px;padding:14px 16px;border-radius:8px;background:var(--panel);border:1px solid var(--line);border-left:8px solid var(--line)}
+#sum.ok{border-left-color:var(--ok)}#sum.bad{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 11%,var(--panel))}#sum.warn{border-left-color:var(--warn)}
+#sum .big{font-size:1.5rem;font-weight:700;line-height:1.2;letter-spacing:-.01em}
+#sum.ok .big{color:var(--ok)}#sum.bad .big{color:var(--bad)}#sum.warn .big{color:var(--warn)}
+#sum p{margin:6px 0 0;color:var(--muted);font-size:.88rem}
+.stage{display:none;background:#000;border-radius:8px;overflow:hidden}
+canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.hint{color:var(--muted);font-size:.82rem;margin:0}
+ul{list-style:none;padding:0;margin:12px 0}
+li{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px}
+li .n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:var(--muted)}
+li.VAR .n{background:var(--ok)}li.YOK .n{background:var(--bad)}li.BELIRSIZ .n{background:var(--warn)}
+li small{display:block;color:var(--muted);font-size:.82rem}
+li .s{font-weight:700;font-size:.92rem}li.VAR .s{color:var(--ok)}li.YOK .s{color:var(--bad)}li.BELIRSIZ .s{color:var(--warn)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:12px 0;padding:10px 14px}
+summary{cursor:pointer;font-weight:600}
+.sl{margin:14px 0 0}.sl label{display:flex;justify-content:space-between;gap:10px;font-size:.88rem;color:var(--muted)}
+.sl b{color:var(--ink);font-variant-numeric:tabular-nums}.sl input{width:100%;accent-color:var(--ok)}
+.sl.main label{color:var(--ink);font-weight:600}
+h2{font-size:.95rem;margin:18px 0 8px}
+#edges{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-start}
+</style>
+</head>
+<body>
+<main>
+<h1>Kılavuz (diş) kontrolü</h1>
+<p class="sub">Fotoğraf yükle. En büyük (ekrana en yakın) delik bulunur, elips çerçevesine oturtulur ve içindeki diş çizgileri (alt alta seri, eliptik) kontrol edilir.</p>
+<label class="btn" for="file" tabindex="0" id="pick">Görsel yükle</label>
+<input type="file" id="file" accept="image/*">
+<div class="tools">
+  <button class="btn ghost" id="liveBtn">Canlı kamera aç</button>
+  <button class="btn ghost" id="camBtn">Fotoğraf çek (telefon kamerası)</button>
+</div>
+<input type="file" id="cam" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:1px;height:1px">
+<p class="hint" id="lstat">Canlı kamera kapalı.</p>
+<details><summary>1. adım: disk var mı? (isteğe bağlı)</summary>
+  <p class="hint">Disk yokken aynı kameradan çekilmiş boş yuva fotoğrafını yüklersen, önce "disk var mı" bakılır; yoksa delik aranmaz.</p>
+  <input type="file" id="ref" accept="image/*">
+  <p class="hint" id="dstat">Disk kontrolü kapalı (boş yuva referansı yüklenmedi).</p>
+  <div class="sl"><label for="gt">Disk var eşiği (% değişen alan) <b id="v_gt">25</b></label><input type="range" id="gt" min="5" max="80" step="1" value="25"></div>
+</details>
+<div id="sum" role="alert"></div>
+<div class="stage" id="stage"><canvas id="cv"></canvas></div>
+<div class="tools" id="tools" hidden>
+  <button class="btn ghost" id="clr" hidden>Elle yapılanları sıfırla</button>
+  <p class="hint">Tek delik kontrol edilir: ekrana en yakın olan. Yanlışsa gri kesikli adaylardan doğru deliğe dokun (o seçilir) ya da deliği parmağınla dikdörtgen çizerek seç. Beyaz çizgi sayılan, gri hariç tutulan kenar. Gri kesikli daire referansa uymayan.</p>
+</div>
+<ul id="list"></ul>
+<details open><summary>Kılavuz eşikleri</summary><div id="setMain"></div></details>
+<details><summary>Gelişmiş ayarlar</summary><div id="setAdv"></div></details>
+<h2>Tüm disk: kenar görünümü (siyah beyaz)</h2><canvas id="fe" width="10" height="10" style="width:100%;height:auto;background:#000;border-radius:8px"></canvas>
+<div id="edgesBox" hidden><h2>Delik içindeki kenarlar (beyaz: sayılan, gri: hariç tutulan)</h2><div id="edges"></div></div>
+</main>
+<script>
+function boxBlur(g,W,H){const o=new Float32Array(W*H);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;o[i]=(g[i-W-1]+g[i-W]+g[i-W+1]+g[i-1]+g[i]+g[i+1]+g[i+W-1]+g[i+W]+g[i+W+1])/9}return o}
+function boxMean(g,W,H,R){
+  const I=new Float64Array((W+1)*(H+1));
+  for(let y=0;y<H;y++){let r=0;for(let x=0;x<W;x++){r+=g[y*W+x];I[(y+1)*(W+1)+x+1]=I[y*(W+1)+x+1]+r}}
+  const o=new Float32Array(W*H);
+  for(let y=0;y<H;y++){const y0=Math.max(0,y-R),y1=Math.min(H,y+R+1);for(let x=0;x<W;x++){const x0=Math.max(0,x-R),x1=Math.min(W,x+R+1);
+    o[y*W+x]=(I[y1*(W+1)+x1]-I[y0*(W+1)+x1]-I[y1*(W+1)+x0]+I[y0*(W+1)+x0])/((x1-x0)*(y1-y0))}}
+  return o;
+}
+function morph(m,W,H,r,mx){
+  const t=new Uint8Array(W*H),o=new Uint8Array(W*H),e=mx?0:1;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=e;for(let k=-r;k<=r;k++){const xx=x+k,u=(xx<0||xx>=W)?e:m[y*W+xx];if(mx?u>v:u<v)v=u}t[y*W+x]=v}
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=e;for(let k=-r;k<=r;k++){const yy=y+k,u=(yy<0||yy>=H)?e:t[yy*W+x];if(mx?u>v:u<v)v=u}o[y*W+x]=v}
+  return o;
+}
+function canny(g,W,H,lo,hi){
+  const mag=new Float32Array(W*H),dir=new Uint8Array(W*H),out=new Uint8Array(W*H),nms=new Float32Array(W*H);
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;
+    const gx=-g[i-W-1]+g[i-W+1]-2*g[i-1]+2*g[i+1]-g[i+W-1]+g[i+W+1];
+    const gy=-g[i-W-1]-2*g[i-W]-g[i-W+1]+g[i+W-1]+2*g[i+W]+g[i+W+1];
+    mag[i]=Math.hypot(gx,gy);let a=Math.atan2(gy,gx)*180/Math.PI;if(a<0)a+=180;
+    dir[i]=(a<22.5||a>=157.5)?0:a<67.5?1:a<112.5?2:3}
+  const N=[[1,-1],[W+1,-W-1],[W,-W],[W-1,-W+1]];
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,m=mag[i];if(m<lo)continue;const [a,b]=N[dir[i]];if(m>=mag[i+a]&&m>=mag[i+b])nms[i]=m}
+  const GX=new Float32Array(W*H),GY=new Float32Array(W*H);
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;GX[i]=-g[i-W-1]+g[i-W+1]-2*g[i-1]+2*g[i+1]-g[i+W-1]+g[i+W+1];GY[i]=-g[i-W-1]-2*g[i-W]-g[i-W+1]+g[i+W-1]+2*g[i+W]+g[i+W+1]}
+  out.gx=GX;out.gy=GY;
+  const st=[];for(let i=0;i<W*H;i++)if(nms[i]>=hi){out[i]=1;st.push(i)}
+  while(st.length){const i=st.pop();for(const d of [-W-1,-W,-W+1,-1,1,W-1,W,W+1]){const j=i+d;if(j>=0&&j<W*H&&!out[j]&&nms[j]>=lo){out[j]=1;st.push(j)}}}
+  return out;
+}
+/* Tüm aday delikleri bul: koyu bölge + kapama + eliptik şekil testi */
+function findCandidates(Gd,W,H,P){
+  const r=Math.max(3,Math.round(W*.01)),cand=[],minW=P.minD/100*W,maxW=P.maxD/100*W;
+  const LM=P.local?boxMean(Gd,W,H,Math.round(W*.07)):null;
+  for(let k=0;k<5;k++){
+    const T=(P.local?P.ld:P.dark)+k*8,m=new Uint8Array(W*H);
+    if(P.local){for(let i=0;i<W*H;i++)m[i]=(Gd[i]<LM[i]-T)?1:0}else for(let i=0;i<W*H;i++)m[i]=Gd[i]<T?1:0;
+    const c=morph(morph(m,W,H,r,1),W,H,r,0),seen=new Uint8Array(W*H);
+    for(let s=0;s<W*H;s++){
+      if(seen[s]||!c[s])continue;
+      let x0=W,x1=0,y0=H,y1=0,sx=0,sy=0,n=0;const st=[s];seen[s]=1;
+      while(st.length){const i=st.pop(),x=i%W,y=(i-x)/W;n++;sx+=x;sy+=y;
+        if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+        if(x>0&&!seen[i-1]&&c[i-1]){seen[i-1]=1;st.push(i-1)}
+        if(x<W-1&&!seen[i+1]&&c[i+1]){seen[i+1]=1;st.push(i+1)}
+        if(y>0&&!seen[i-W]&&c[i-W]){seen[i-W]=1;st.push(i-W)}
+        if(y<H-1&&!seen[i+W]&&c[i+W]){seen[i+W]=1;st.push(i+W)}}
+      const w=x1-x0+1,h=y1-y0+1;
+      if(x0<=2||y0<=2||x1>=W-3||y1>=H-3)continue;
+      if(w<minW||h<minW||w>maxW||h>maxW)continue;
+      const asp=w/h,fill=n/(w*h);
+      if(asp<.4||asp>2.5||fill<.38)continue;
+      cand.push({cx:sx/n,cy:sy/n,a:w/2,b:h/2,r:(w+h)/4,score:fill});
+    }
+  }
+  if(P.raw)return cand;
+  cand.sort((p,q)=>q.score-p.score);
+  const keep=[];
+  for(const c of cand)if(!keep.some(o=>Math.hypot(o.cx-c.cx,o.cy-c.cy)<.6*Math.max(o.r,c.r)))keep.push(c);
+  return keep;
+}
+/* Referansı otomatik belirle: en iyi adayların medyan çapı; perspektife payı olan oransal tolerans */
+function autoRef(c){return c.length?Math.max(...c.map(o=>2*o.r)):0}
+function matchRef(c,ref,tol){return c.filter(o=>2*o.r>=ref*(1-tol/100))}
+function analyze(h,E,W,H,P){
+  const sc=h.manual?1:P.big/100,A=h.a*sc,B=h.b*sc,k=1-P.mar/100;h.A=A;h.B=B;
+  const inner=new Set(),outer=[];
+  for(let y=Math.max(1,Math.floor(h.cy-B));y<=Math.min(H-2,Math.ceil(h.cy+B));y++)
+    for(let x=Math.max(1,Math.floor(h.cx-A));x<=Math.min(W-2,Math.ceil(h.cx+A));x++){
+      const i=y*W+x;if(!E[i])continue;
+      const d=Math.hypot((x-h.cx)/A,(y-h.cy)/B);
+      if(d<=k)inner.add(i);else if(d<=1)outer.push(i)}
+  h.inner=[...inner];h.outer=outer;
+  /* 1) delik içindeki kenarları ayrı çizgilere (bağlı parçalara) böl */
+  const comps=[],seen=new Set();
+  for(const s of inner){
+    if(seen.has(s))continue;const pts=[],st=[s];seen.add(s);
+    while(st.length){const i=st.pop();pts.push(i);for(const d of [-W-1,-W,-W+1,-1,1,W-1,W,W+1]){const j=i+d;if(inner.has(j)&&!seen.has(j)){seen.add(j);st.push(j)}}}
+    if(pts.length<3)continue;
+    let mx=0,my=0;pts.forEach(i=>{mx+=i%W;my+=Math.floor(i/W)});mx/=pts.length;my/=pts.length;
+    let cxx=0,cyy=0,cxy=0;pts.forEach(i=>{const dx=i%W-mx,dy=Math.floor(i/W)-my;cxx+=dx*dx;cyy+=dy*dy;cxy+=dx*dy});
+    const th=.5*Math.atan2(2*cxy,cxx-cyy);
+    let ang=th*180/Math.PI;if(ang<0)ang+=180;
+    const ux=Math.cos(th),uy=Math.sin(th);let lo=1e9,hi=-1e9,sq=0;
+    let qlo=1e9,qhi=-1e9;
+    pts.forEach(i=>{const dx=i%W-mx,dy=Math.floor(i/W)-my,p=dx*ux+dy*uy,q=-dx*uy+dy*ux;if(p<lo)lo=p;if(p>hi)hi=p;if(q<qlo)qlo=q;if(q>qhi)qhi=q;sq+=q*q});
+    const len=hi-lo,dev=Math.sqrt(sq/pts.length),sag=(qhi-qlo)/Math.max(1,len);
+    let rm1=0;const rr=[],aa=[];
+    for(const i of pts){const u=(i%W-h.cx)/A,v=(Math.floor(i/W)-h.cy)/B,r=Math.hypot(u,v);rr.push(r);aa.push(Math.atan2(v,u));rm1+=r}
+    rm1/=pts.length;let vr=0;rr.forEach(r=>vr+=(r-rm1)*(r-rm1));const sdr=Math.sqrt(vr/pts.length);
+    aa.sort((p,q)=>p-q);let gp=aa[0]+2*Math.PI-aa[aa.length-1];for(let q=1;q<aa.length;q++)gp=Math.max(gp,aa[q]-aa[q-1]);
+    const span=2*Math.PI-gp;
+    comps.push({cx:mx,cy:my,ang,len,sag,rimlike:sdr<=(P.rimSd||.05)&&span>=.9,straight:len>=Math.min(A,B)*.9&&dev<=.03*len+.6});
+  }
+  h.straight=comps.filter(c=>c.straight).length;
+  /* 2) diş şeridi: birbirine paralel ve ALT ALTA SERİ dizilmiş çizgi zinciri; eliptik (eğri) çizgi sayısı */
+  const tol=(100-P.tol)/100*90,rm=(A+B)/2*k,gapMin=Math.max(2,rm*.04);let best=0,bestEli=0;
+  for(const a of comps){
+    const grp=comps.filter(b=>{if(b.rimlike)return false;let d=Math.abs(a.ang-b.ang);d=Math.min(d,180-d);return d<=tol});
+    if(grp.length<best)continue;
+    const r=a.ang*Math.PI/180,nx=-Math.sin(r),ny=Math.cos(r),tx=Math.cos(r),ty=Math.sin(r);
+    const it=grp.filter(c=>c.len>=(P.minLen||0)*rm).map(c=>({u:c.cx*nx+c.cy*ny,v:c.cx*tx+c.cy*ty,len:c.len,eli:c.sag>=.1&&c.len>=6})).sort((p,q)=>p.u-q.u);
+    const lv=[];
+    for(const c of it){
+      const L=lv[lv.length-1];
+      if(L&&c.u-L.u<gapMin){L.vmin=Math.min(L.vmin,c.v-c.len/2);L.vmax=Math.max(L.vmax,c.v+c.len/2);L.eli=L.eli||c.eli;L.len=Math.max(L.len,c.len)}
+      else lv.push({u:c.u,vmin:c.v-c.len/2,vmax:c.v+c.len/2,len:c.len,eli:c.eli});
+    }
+    if(lv.length<2){if(lv.length>best){best=lv.length;bestEli=lv.filter(l=>l.eli).length}continue}
+    const gaps=[];for(let i=1;i<lv.length;i++)gaps.push(lv[i].u-lv[i-1].u);
+    const med=gaps.slice().sort((p,q)=>p-q)[gaps.length>>1];
+    let run=1,runEli=lv[0].eli?1:0,bRun=1,bEli=runEli,cg=[];
+    for(let i=1;i<lv.length;i++){
+      const p=lv[i-1],c=lv[i],g=c.u-p.u;
+      let stacked=c.vmin<=p.vmax+.5*p.len&&c.vmax>=p.vmin-.5*p.len&&g<=2.5*Math.max(med,gapMin);
+      if(stacked&&cg.length>=2){const m2=cg.slice().sort((x,y)=>x-y)[cg.length>>1];if(g>1.8*m2||g<.4*m2)stacked=false}
+      if(stacked){run++;cg.push(g);if(c.eli)runEli++}else{run=1;runEli=c.eli?1:0;cg=[]}
+      if(run>bRun){bRun=run;bEli=runEli}
+    }
+    if(bRun>best||(bRun===best&&bEli>bestEli)){best=bRun;bestEli=bEli}
+  }
+  h.comps=comps;h.lines=comps.length;h.strip=best;h.eli=bestEli;
+  h.st=(rm<5)?"BELIRSIZ":((h.lines>=P.lines&&best>=P.strip&&bestEli>=P.eli)?"VAR":"YOK");
+}
+/* Halka kenarına yapışan elips uydurma (deliğin çapını tam işaretlemek için) */
+function refine(h,E,W,H){
+  const gx=E.gx,gy=E.gy,pts=[];
+  for(let k=0;k<90;k++){
+    const t=k*2*Math.PI/90,c=Math.cos(t),s=Math.sin(t);let best=0,bx=0,by=0;
+    for(let q=(h.manual?.4:.7);q<=(h.manual?1.2:1.4);q+=.02){
+      const x=Math.round(h.cx+c*h.a*q),y=Math.round(h.cy+s*h.b*q);
+      if(x<2||y<2||x>=W-2||y>=H-2)continue;
+      const i=y*W+x,m=Math.abs(gx[i]*c+gy[i]*s);
+      if(m>best){best=m;bx=x;by=y}
+    }
+    if(best>80)pts.push([bx,by]);
+  }
+  if(pts.length<30)return false;
+  const fit=P2=>{
+    const M=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],R=[0,0,0,0];
+    for(const [x0,y0] of P2){const x=x0-h.cx,y=y0-h.cy,f=[x*x,y*y,x,y];for(let i=0;i<4;i++){R[i]+=f[i];for(let j=0;j<4;j++)M[i][j]+=f[i]*f[j]}}
+    for(let i=0;i<4;i++){let p=i;for(let r=i+1;r<4;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;[M[i],M[p]]=[M[p],M[i]];[R[i],R[p]]=[R[p],R[i]];
+      if(Math.abs(M[i][i])<1e-9)return null;
+      for(let r=i+1;r<4;r++){const f=M[r][i]/M[i][i];for(let c=i;c<4;c++)M[r][c]-=f*M[i][c];R[r]-=f*R[i]}}
+    const z=[0,0,0,0];for(let i=3;i>=0;i--){let v=R[i];for(let c=i+1;c<4;c++)v-=M[i][c]*z[c];z[i]=v/M[i][i]}
+    const [A,C,D,E2]=z;if(!(A>0&&C>0))return null;
+    const xc=-D/(2*A),yc=-E2/(2*C),Rr=1+A*xc*xc+C*yc*yc;if(Rr<=0)return null;
+    return {cx:h.cx+xc,cy:h.cy+yc,a:Math.sqrt(Rr/A),b:Math.sqrt(Rr/C)};
+  };
+  let f=fit(pts);if(!f)return false;
+  const res=pts.map(p=>Math.abs(Math.hypot((p[0]-f.cx)/f.a,(p[1]-f.cy)/f.b)-1)),sorted=res.slice().sort((p,q)=>p-q),lim=Math.max(.08,2*sorted[sorted.length>>1]);
+  const keep=pts.filter((p,i)=>res[i]<=lim);
+  if(keep.length>=24){const f2=fit(keep);if(f2)f=f2}
+  const lo=h.manual?.3:.6,hi=h.manual?1.3:1.5;if(f.a<h.a*lo||f.a>h.a*hi||f.b<h.b*lo||f.b>h.b*hi||Math.hypot(f.cx-h.cx,f.cy-h.cy)>Math.max(h.a,h.b))return false;
+  h.cx=f.cx;h.cy=f.cy;h.a=f.a;h.b=f.b;h.r=(f.a+f.b)/2;h.refined=true;return true;
+}
+/* Ekrana en yakın delik: yeterince büyük adaylar arasında en alttaki */
+function nearest(c,H){
+  const rd=c.filter(o=>Math.min(o.a,o.b)/Math.max(o.a,o.b)>=.5);if(rd.length)c=rd;
+  if(!c.length)return [];
+  const mx=Math.max(...c.map(o=>o.a*o.b)),sc=o=>(o.cy+o.b)/H+.8*Math.sqrt(o.a*o.b/mx)-Math.max(0,(o.inb||0)-120)/100;
+  const big=c.filter(o=>o.a*o.b>=.4*mx);
+  return [big.sort((p,q)=>sc(q)-sc(p))[0]];
+}
+
+/* Kenar haritasıyla doğrulama: kapalı elips çerçeve + içeride sık kenar */
+function verify(h,E,W,H){
+  let hit=0,tot=0;
+  for(let k=0;k<72;k++){
+    const t=k*Math.PI/36,c=Math.cos(t),s=Math.sin(t);let f=false;
+    for(let q=.8;q<=1.2&&!f;q+=.04){
+      const x=Math.round(h.cx+c*h.a*q),y=Math.round(h.cy+s*h.b*q);
+      if(x<2||y<2||x>=W-2||y>=H-2)continue;
+      for(let dy=-1;dy<=1&&!f;dy++)for(let dx=-1;dx<=1;dx++)if(E[(y+dy)*W+x+dx]){f=true;break}
+    }
+    tot++;if(f)hit++;
+  }
+  let n=0,area=0;
+  for(let y=Math.max(1,Math.floor(h.cy-h.b));y<=Math.min(H-2,Math.ceil(h.cy+h.b));y++)
+    for(let x=Math.max(1,Math.floor(h.cx-h.a));x<=Math.min(W-2,Math.ceil(h.cx+h.a));x++){
+      if(Math.hypot((x-h.cx)/h.a,(y-h.cy)/h.b)<=.9){area++;if(E[y*W+x])n++}
+    }
+  h.rim=hit/tot;h.dens=n/Math.max(1,area);
+}
+
+function verify2(h,E,W,H,sc){
+  let hit=0;const a=h.a*(sc||1),b=h.b*(sc||1);
+  for(let k=0;k<72;k++){
+    const t=k*Math.PI/36,c=Math.cos(t),s=Math.sin(t),nx=c/a,ny=s/b,nv=Math.atan2(ny,nx);let f=false;
+    for(let q=.85;q<=1.151&&!f;q+=.03){
+      const x=Math.round(h.cx+c*a*q),y=Math.round(h.cy+s*b*q);
+      if(x<2||y<2||x>=W-2||y>=H-2)continue;
+      for(let dy=-1;dy<=1&&!f;dy++)for(let dx=-1;dx<=1;dx++){
+        const i=(y+dy)*W+x+dx;if(!E[i])continue;
+        let d=Math.abs(Math.atan2(E.gy[i],E.gx[i])-nv)%Math.PI;d=Math.min(d,Math.PI-d);
+        if(d<=.6){f=true;break}
+      }
+    }
+    if(f)hit++;
+  }
+  h.rim2=hit/72;
+}
+
+/* Adayları kenar haritasıyla doğrula, çakışanlardan büyüğünü tut */
+function darkness(h,G,W,H){
+  let a=0,an=0,b=0,bn=0;
+  for(let k=0;k<16;k++){const t=k*Math.PI/8,c=Math.cos(t),s=Math.sin(t);
+    for(const f of [.2,.5]){const x=Math.round(h.cx+c*h.a*f),y=Math.round(h.cy+s*h.b*f);if(x>=0&&y>=0&&x<W&&y<H){a+=G[y*W+x];an++}}
+    for(const f of [1.25,1.5]){const x=Math.round(h.cx+c*h.a*f),y=Math.round(h.cy+s*h.b*f);if(x>=0&&y>=0&&x<W&&y<H){b+=G[y*W+x];bn++}}}
+  h.dk=(an&&bn)?(b/bn-a/an):0;h.inb=an?a/an:0;
+}
+function selectHoles(raw,E,W,H,P,G){
+  raw.forEach(h=>{verify(h,E,W,H);if(G)darkness(h,G,W,H)});
+  const ok=raw.filter(h=>h.rim*100>=P.rim&&(!G||h.dk>=(P.dk==null?12:P.dk)));
+  ok.sort((p,q)=>q.a*q.b-p.a*p.b);
+  const keep=[];
+  for(const c of ok)if(!keep.some(o=>Math.hypot(o.cx-c.cx,o.cy-c.cy)<.6*Math.max(o.r,c.r)))keep.push(c);
+  keep.forEach(h=>h.score=h.rim);
+  keep.sort((p,q)=>q.score-p.score);
+  return keep;
+}
+
+const $=id=>document.getElementById(id);
+const DEF=[
+ {k:"lines",t:"Ayrı çizgi sayısı eşiği",min:1,max:40,step:1,v:7,main:1},
+ {k:"strip",t:"Min seri paralel çizgi (alt alta diş şeridi)",min:1,max:30,step:1,v:8,main:1},
+ {k:"eli",t:"Min eliptik (eğri) çizgi sayısı",min:0,max:15,step:1,v:1,main:1},
+ {k:"dark",t:"Karanlık sınırı (taban, 5 kademe)",min:20,max:160,step:1,v:55},
+ {k:"ld",t:"Yerel koyuluk farkı (çevreye göre)",min:5,max:60,step:1,v:15},
+ {k:"dk",t:"Delik içi–çevre parlaklık farkı",min:0,max:60,step:1,v:12},
+ {k:"minD",t:"Min delik çapı (% görüntü eni)",min:1,max:30,step:1,v:4},
+ {k:"maxD",t:"Max delik çapı (% görüntü eni)",min:5,max:60,step:1,v:30},
+ {k:"tol",t:"Paralellik eşiği (%)",min:30,max:100,step:1,v:72},
+ {k:"rim",t:"Elips çerçeve doğrulama eşiği (%)",min:30,max:100,step:1,v:85},
+ {k:"big",t:"Analiz alanını büyüt (%)",min:90,max:160,step:1,v:100},
+ {k:"mar",t:"Delik kenarını hariç tut (%)",min:0,max:40,step:1,v:25},
+ {k:"lo",t:"Canny alt eşik",min:5,max:200,step:1,v:40},
+ {k:"hi",t:"Canny üst eşik",min:20,max:400,step:1,v:120}
+];
+const P={};DEF.forEach(d=>P[d.k]=d.v);
+let forced=null,SRC=null,SK=1,W=0,H=0,G1=null,G3=null,IMG=null,manual=[],ign=[],LH=[],ALLC=[],timer=null,lastAlert=false;
+const cv=$("cv"),ctx=cv.getContext("2d");
+
+DEF.forEach(d=>{
+  const w=document.createElement("div");w.className="sl"+(d.main?" main":"");
+  w.innerHTML='<label for="p_'+d.k+'">'+d.t+' <b id="v_'+d.k+'">'+d.v+'</b></label><input type="range" id="p_'+d.k+'" min="'+d.min+'" max="'+d.max+'" step="'+d.step+'" value="'+d.v+'">';
+  $(d.main?"setMain":"setAdv").appendChild(w);
+  w.querySelector("input").addEventListener("input",e=>{
+    P[d.k]=+e.target.value;$("v_"+d.k).textContent=e.target.value;
+    clearTimeout(timer);timer=setTimeout(()=>run(false),150);
+  });
+});
+
+$("pick").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("file").click()}});
+/* ===== AYARLAR (nihai sürümde güncellenecek) =====
+   İki kontrol arası MİNİMUM BEKLEME (ms). Amaç: yıkamadan çıkan ürünün (delikleri su dolu) hemen tekrar kontrol edilmesini engellemek.
+   NİHAİ SÜRÜMDE yıkama süresine göre artır, örn. 60000 (60 sn). Şimdilik 1000 (1 sn). */
+const KONTROL_ARALIGI_MS=1000;
+const LIVE_ARALIK_MS=700; // canlı kamerada iki analiz arası en az bekleme (KONTROL_ARALIGI_MS ile büyük olan geçerli)
+let lastCheckAt=0,refImg=null,lastSrc=null,discInfo=null,lastSt=null;
+
+/* 1. adım: disk var mı (boş yuva referansına göre fark) */
+function smallGray(img,w,h){const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];return g}
+function zNorm(g){let m=0;for(const v of g)m+=v;m/=g.length;let s=0;for(const v of g)s+=(v-m)*(v-m);s=Math.sqrt(s/g.length)||1;return g.map(v=>(v-m)/s)}
+function discCheck(im){
+  if(!refImg)return null;
+  const w0=im.naturalWidth||im.width,h0=im.naturalHeight||im.height,sc=96/Math.max(w0,h0),w=Math.max(8,Math.round(w0*sc)),h=Math.max(8,Math.round(h0*sc));
+  const a=zNorm(smallGray(im,w,h)),b=zNorm(smallGray(refImg,w,h));let n=0;for(let i=0;i<a.length;i++)if(Math.abs(a[i]-b[i])>.9)n++;
+  const frac=n/a.length*100;return{frac,present:frac>=+$("gt").value};
+}
+$("gt").addEventListener("input",e=>{$("v_gt").textContent=e.target.value;if(lastSrc){discInfo=discCheck(lastSrc);if(G3)run(false)}});
+$("ref").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const im=new Image();
+  im.onload=()=>{refImg=im;if(lastSrc){discInfo=discCheck(lastSrc);if(G3)run(false)}else $("dstat").textContent="Referans yüklendi. Şimdi kontrol edilecek görseli yükle."};im.src=URL.createObjectURL(f)});
+
+function loadImage(im,live){
+    const s=Math.min(1,720/im.width),fw=Math.round(im.width*s),fh=Math.round(im.height*s);
+    const t=document.createElement("canvas");t.width=fw;t.height=fh;
+    const tc=t.getContext("2d");tc.drawImage(im,0,0,fw,fh);
+    const d=tc.getImageData(0,0,fw,fh).data,L=i=>.299*d[i]+.587*d[i+1]+.114*d[i+2];
+    let y0=0,y1=fh-1,x0=0,x1=fw-1;
+    const rowOK=y=>{let a=0,n=0;for(let x=0;x<fw;x+=4){a+=L((y*fw+x)*4);n++}return a/n>12};
+    while(y0<y1&&!rowOK(y0))y0++;while(y1>y0&&!rowOK(y1))y1--;
+    const colOK=x=>{let a=0,n=0;for(let y=y0;y<=y1;y+=4){a+=L((y*fw+x)*4);n++}return a/n>12};
+    while(x0<x1&&!colOK(x0))x0++;while(x1>x0&&!colOK(x1))x1--;
+    W=x1-x0+1;H=y1-y0+1;cv.width=W;cv.height=H;ctx.drawImage(t,x0,y0,W,H,0,0,W,H);
+    IMG=ctx.getImageData(0,0,W,H);
+    const kx=im.width/fw,ky=im.height/fh,s2=Math.min(1,3000/im.width);
+    SRC=document.createElement("canvas");SRC.width=Math.round(W*kx*s2);SRC.height=Math.round(H*ky*s2);SK=SRC.width/W;
+    const sx=SRC.getContext("2d");sx.imageSmoothingQuality="high";sx.drawImage(im,x0*kx,y0*ky,W*kx,H*ky,0,0,SRC.width,SRC.height);
+    const g=new Float32Array(W*H);
+    for(let i=0;i<W*H;i++)g[i]=.299*IMG.data[i*4]+.587*IMG.data[i*4+1]+.114*IMG.data[i*4+2];
+    G1=boxBlur(g,W,H);G3=boxBlur(boxBlur(G1,W,H),W,H);
+    manual=[];ign=[];forced=null;$("clr").hidden=true;$("stage").style.display="block";$("tools").hidden=false;
+    if(!live&&im.src)URL.revokeObjectURL(im.src);
+    lastSrc=im;discInfo=discCheck(im);
+    if(live)run(false);
+    else{$("sum").style.display="block";$("sum").className="warn";$("sum").innerHTML='<div class="big">Analiz ediliyor…</div>';setTimeout(()=>run(true),30)}
+}
+function onPick(e){
+  const f=e.target.files[0];if(!f)return;
+  if(liveOn)liveStop();
+  const wait=KONTROL_ARALIGI_MS-(Date.now()-lastCheckAt);
+  if(wait>0){const b=$("sum");b.style.display="block";b.className="warn";b.innerHTML='<div class="big">BEKLE</div><p>Önceki kontrolden bu yana süre dolmadı. Yaklaşık '+Math.ceil(wait/1000)+' sn sonra tekrar yükle.</p>';e.target.value="";return}
+  const im=new Image();
+  im.onload=()=>{loadImage(im,false);lastCheckAt=Date.now()};
+  im.onerror=()=>{$("lstat").textContent="Görsel açılamadı."};
+  im.src=URL.createObjectURL(f);e.target.value="";
+}
+$("file").addEventListener("change",onPick);
+$("cam").addEventListener("change",onPick);
+$("camBtn").addEventListener("click",()=>$("cam").click());
+
+/* Canlı kamera: kareler art arda aynı kontrolden geçer, son 5 karenin oyu gösterilir */
+let liveOn=false,liveStream=null,liveVideo=null,liveTimer=null,liveBusy=false,liveHist=[];
+async function liveStart(){
+  if(liveOn)return;
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("bu tarayıcıda kamera erişimi yok");
+    liveStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
+  }catch(err){const n=err&&err.name||"";$("lstat").textContent="Kamera açılamadı ("+(n?n+": ":"")+(err&&err.message||err)+"). "+(n==="NotAllowedError"||n==="SecurityError"?"Bu sayfa claude.ai içinde çalıştığı için tarayıcı canlı kamerayı engelliyor olabilir. Şimdilik 'Fotoğraf çek' kullan (telefonun kendi kamerasını açar).":"'Fotoğraf çek' düğmesini kullan.");return}
+  liveVideo=document.createElement("video");liveVideo.setAttribute("playsinline","");liveVideo.muted=true;liveVideo.srcObject=liveStream;
+  liveVideo.style.cssText="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none";document.body.appendChild(liveVideo);
+  try{await liveVideo.play()}catch(err){}
+  liveOn=true;liveHist=[];$("liveBtn").textContent="Kamerayı kapat";$("lstat").textContent="Canlı kamera açık, kareler kontrol ediliyor…";liveLoop();
+}
+function liveStop(){
+  liveOn=false;clearTimeout(liveTimer);
+  if(liveStream){liveStream.getTracks().forEach(t=>t.stop());liveStream=null}
+  if(liveVideo){liveVideo.remove();liveVideo=null}
+  $("liveBtn").textContent="Canlı kamera aç";$("lstat").textContent="Canlı kamera kapalı.";
+}
+function liveLoop(){
+  if(!liveOn)return;
+  const gap=Math.max(LIVE_ARALIK_MS,KONTROL_ARALIGI_MS),t0=Date.now();
+  if(liveVideo&&liveVideo.videoWidth>0&&!liveBusy){
+    liveBusy=true;
+    try{
+      const vc=document.createElement("canvas");vc.width=liveVideo.videoWidth;vc.height=liveVideo.videoHeight;vc.getContext("2d").drawImage(liveVideo,0,0);
+      loadImage(vc,true);
+      if(lastSt==="VAR"||lastSt==="YOK"){liveHist.push(lastSt);if(liveHist.length>5)liveHist.shift()}
+      const ok=liveHist.filter(v=>v==="VAR").length,no=liveHist.filter(v=>v==="YOK").length;
+      $("lstat").textContent="Canlı: son "+liveHist.length+" geçerli kare: "+ok+" OK / "+no+" NOK";
+    }catch(err){$("lstat").textContent="Canlı analiz hatası: "+(err&&err.message||err)}
+    liveBusy=false;
+  }
+  liveTimer=setTimeout(liveLoop,Math.max(50,gap-(Date.now()-t0)));
+}
+$("liveBtn").addEventListener("click",()=>liveOn?liveStop():liveStart());
+$("clr").addEventListener("click",()=>{manual=[];ign=[];forced=null;$("clr").hidden=true;run(false)});
+
+function findAll(E){
+  for(const off of [0,-10,20,40]){
+    const q={...P,dark:P.dark+off,raw:true};
+    const raw=findCandidates(G3,W,H,q).concat(findCandidates(G3,W,H,{...q,local:true}));
+    const c=selectHoles(raw,E,W,H,P,G3);
+    if(c.length)return c;
+  }
+  return [];
+}
+
+function analyzeHi(h){
+  const sc=h.manual?1:P.big/100,k=SK;
+  h.A=h.a*sc;h.B=h.b*sc;
+  const A2=h.A*k+3,B2=h.B*k+3;
+  const x0=Math.max(0,Math.floor(h.cx*k-A2)),y0=Math.max(0,Math.floor(h.cy*k-B2)),x1=Math.min(SRC.width,Math.ceil(h.cx*k+A2)),y1=Math.min(SRC.height,Math.ceil(h.cy*k+B2));
+  const sw=Math.max(8,x1-x0),sh=Math.max(8,y1-y0),f=320/sw,cw=Math.max(16,Math.round(sw*f)),ch=Math.max(16,Math.round(sh*f));
+  const c=document.createElement("canvas");c.width=cw;c.height=ch;const x=c.getContext("2d");
+  x.imageSmoothingQuality="high";x.drawImage(SRC,x0,y0,sw,sh,0,0,cw,ch);
+  const d=x.getImageData(0,0,cw,ch).data,g=new Float32Array(cw*ch);
+  for(let i=0;i<cw*ch;i++)g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];
+  const El=canny(boxBlur(g,cw,ch),cw,ch,P.lo,P.hi);
+  const hl={cx:(h.cx*k-x0)*f,cy:(h.cy*k-y0)*f,a:h.a*k*f,b:h.b*k*f,manual:h.manual};
+  analyze(hl,El,cw,ch,P);
+  h.loc={hl,El,cw,ch};h.lines=hl.lines;h.strip=hl.strip;h.eli=hl.eli;h.st=hl.st;
+}
+
+function run(loud){
+  if(!G3)return;
+  const E=canny(G1,W,H,P.lo,P.hi);
+  $("dstat").textContent=discInfo?("Disk kontrolü: "+(discInfo.present?"disk var":"disk YOK")+" (referanstan değişen alan %"+discInfo.frac.toFixed(0)+")"):"Disk kontrolü kapalı (boş yuva referansı yüklenmedi).";
+  if(!manual.length&&discInfo&&!discInfo.present){
+    ctx.putImageData(IMG,0,0);LH=[];ALLC=[];lastSt=null;renderEdges([],E);drawFull(E,[]);
+    const b=$("sum");b.style.display="block";b.className="warn";b.innerHTML='<div class="big">DİSK YOK</div><p>Boş yuvadan değişen alan %'+discInfo.frac.toFixed(0)+' < eşik %'+$("gt").value+'. Delik aranmadı.</p>';
+    $("list").innerHTML="";lastAlert=false;return;
+  }
+  let holes,others=[];
+  if(manual.length){
+    const m={...manual[manual.length-1],manual:true};refine(m,E,W,H);holes=[m];
+  }else{
+    const c0=findAll(E).filter(h=>!ign.some(g=>Math.hypot(g.cx-h.cx,g.cy-h.cy)<.6*Math.max(g.r,h.r)));
+    c0.forEach(h=>refine(h,E,W,H));for(let i=c0.length-1;i>=0;i--){const q=c0[i];if(q.cx-q.a<2||q.cx+q.a>W-2||q.cy-q.b<2||q.cy+q.b>H-2)c0.splice(i,1)}
+    const fc=forced?c0.find(h=>Math.hypot(h.cx-forced.cx,h.cy-forced.cy)<.6*Math.max(h.r,forced.r)):null;
+    holes=fc?[fc]:nearest(c0,H);others=c0.filter(h=>!holes.includes(h));
+  }
+  holes.forEach(h=>analyzeHi(h));
+  ALLC=others.map(o=>({...o,A:o.a,B:o.b}));
+  LH=holes;draw(holes);report(holes,loud);renderEdges(holes,E);drawFull(E,holes);lastSt=holes.length?holes[0].st:null;
+}
+
+function drawFull(E,holes){
+  const c=$("fe");c.width=W;c.height=H;const x=c.getContext("2d"),im=x.createImageData(W,H);
+  for(let i=0;i<W*H;i++){const v=E[i]?255:0;im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=v;im.data[i*4+3]=255}
+  x.putImageData(im,0,0);
+  const col={VAR:"#18C29B",YOK:"#FF4A2E",BELIRSIZ:"#E8B923"};
+  holes.forEach(h=>{x.lineWidth=Math.max(2,W/300);x.strokeStyle=col[h.st];x.beginPath();x.ellipse(h.cx,h.cy,h.A,h.B,0,0,7);x.stroke()});
+}
+function draw(holes){
+  ctx.putImageData(IMG,0,0);
+  const col={VAR:"#18C29B",YOK:"#FF4A2E",BELIRSIZ:"#E8B923"},lw=Math.max(2,W/260);
+  ALLC.forEach(o=>{ctx.lineWidth=lw;ctx.strokeStyle="#a5adb4";ctx.setLineDash([6,5]);ctx.beginPath();ctx.ellipse(o.cx,o.cy,o.A||o.a,o.B||o.b,0,0,7);ctx.stroke();ctx.setLineDash([])});
+  holes.forEach((h,n)=>{
+    ctx.lineWidth=lw*1.4;ctx.strokeStyle=col[h.st];ctx.beginPath();ctx.ellipse(h.cx,h.cy,h.A,h.B,0,0,7);ctx.stroke();
+    const fs=Math.max(16,W/24),tx=h.cx-h.A,ty=h.cy-h.B;
+    ctx.fillStyle=col[h.st];ctx.beginPath();ctx.arc(tx,ty,fs*.8,0,7);ctx.fill();
+    ctx.fillStyle="#000";ctx.font="700 "+fs+"px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(n+1,tx,ty+1);
+  });
+}
+
+const LBL={VAR:"KILAVUZ VAR",YOK:"KILAVUZ YOK",BELIRSIZ:"BELİRSİZ"};
+function report(holes,loud){
+  const b=$("sum");b.style.display="block";
+  if(!holes.length){
+    b.className="warn";
+    b.innerHTML='<div class="big">Delik bulunamadı</div><p>Deliği parmağınla dikdörtgen çizerek seç. Elips deliğin kenarına otomatik oturur.</p>';
+    $("list").innerHTML="";lastAlert=false;return;
+  }
+  const h=holes[0],ok1=h.lines>=P.lines,ok2=h.strip>=P.strip,ok3=h.eli>=P.eli;
+  const oth=ALLC.length?' Daha uzak '+ALLC.length+' aday dışarıda; seçilen yanlışsa ona dokun, sıradaki en yakın delik seçilir.':'';
+  if(h.st==="YOK"){
+    const why=[];if(!ok1)why.push('ayrı çizgi '+h.lines+'/'+P.lines);if(!ok2)why.push('seri paralel çizgi '+h.strip+'/'+P.strip);if(!ok3)why.push('eliptik çizgi '+h.eli+'/'+P.eli);
+    b.className="bad";b.innerHTML='<div class="big">UYARI: KILAVUZ YOK</div><p>Yetersiz: '+why.join(', ')+'.'+oth+'</p>';
+    if(loud||!lastAlert)alarm();lastAlert=true;
+  }else if(h.st==="VAR"){
+    b.className="ok";b.innerHTML='<div class="big">KILAVUZ VAR</div><p>Ekrana en yakın delik kontrol edildi.'+oth+'</p>';lastAlert=false;
+  }else{
+    b.className="warn";b.innerHTML='<div class="big">BELİRSİZ</div><p>Delik çok küçük, daha yakından çek.'+oth+'</p>';lastAlert=false;
+  }
+  const mk=(t,v,e,o)=>'<small>'+(o?'✓ ':'✗ ')+t+': '+v+' / eşik '+e+'</small>';
+  $("list").innerHTML='<li class="'+h.st+'"><span class="n">1</span><div>Delik (ekrana en yakın)'+(h.manual?' (elle)':'')+mk('Ayrı çizgi',h.lines,P.lines,ok1)+mk('Seri paralel çizgi (alt alta)',h.strip,P.strip,ok2)+mk('Eliptik (eğri) çizgi',h.eli,P.eli,ok3)+(h.rim!=null?'<small>Çerçeve doğrulama %'+Math.round(h.rim*100)+'</small>':'')+'</div><span class="s">'+LBL[h.st]+'</span></li>';
+}
+
+function renderEdges(holes,E){
+  const box=$("edges");box.innerHTML="";$("edgesBox").hidden=!holes.length;
+  holes.forEach((h,n)=>{
+    const L=h.loc,hl=L.hl,w=L.cw,hh=L.ch,mark=new Uint8Array(w*hh);
+    hl.outer.forEach(i=>{if(!mark[i])mark[i]=1});hl.inner.forEach(i=>{mark[i]=2});
+    const f=document.createElement("figure"),c=document.createElement("canvas"),p=document.createElement("figcaption");
+    f.style.margin="0";c.width=w;c.height=hh;
+    c.style.cssText="display:block;width:"+Math.min(w,320)+"px;max-width:100%;height:auto;background:#000;border-radius:8px;border:1px solid var(--line)";
+    p.className="hint";p.textContent=LBL[h.st]+" · çizgi "+h.lines+"/"+P.lines+" · seri paralel "+h.strip+"/"+P.strip+" · eliptik "+h.eli+"/"+P.eli;
+    f.appendChild(c);f.appendChild(p);box.appendChild(f);
+    const cx=c.getContext("2d"),im=cx.createImageData(w,hh);
+    for(let y=0;y<hh;y++)for(let x=0;x<w;x++){
+      const i=y*w+x,o=i*4;let v=0;
+      if(Math.hypot((x-hl.cx)/hl.A,(y-hl.cy)/hl.B)<=1&&L.El[i])v=mark[i]===2?255:140;
+      im.data[o]=im.data[o+1]=im.data[o+2]=v;im.data[o+3]=255;
+    }
+    cx.putImageData(im,0,0);
+  });
+}
+function alarm(){
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}
+  try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
+    o.type="square";o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.35)}catch(e){}
+}
+
+let ds=null;
+function pos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+cv.addEventListener("pointerdown",e=>{if(!G3||liveOn)return;cv.setPointerCapture(e.pointerId);ds=pos(e)});
+cv.addEventListener("pointermove",e=>{
+  if(!ds)return;const p=pos(e);
+  draw(LH);ctx.lineWidth=2;ctx.strokeStyle="#4DA3FF";ctx.setLineDash([6,4]);
+  ctx.strokeRect(ds.x,ds.y,p.x-ds.x,p.y-ds.y);ctx.setLineDash([]);
+});
+cv.addEventListener("pointerup",e=>{
+  if(!ds)return;const p=pos(e),w=Math.abs(p.x-ds.x),h=Math.abs(p.y-ds.y);
+  if(w>8&&h>8){manual.push({cx:(p.x+ds.x)/2,cy:(p.y+ds.y)/2,a:w/2,b:h/2,r:(w+h)/4,manual:true});$("clr").hidden=false}
+  else if(w<=8&&h<=8){
+    const cc=ALLC.find(o=>Math.hypot((o.cx-p.x)/(o.A||o.a),(o.cy-p.y)/(o.B||o.b))<=1);
+    if(cc){forced={cx:cc.cx,cy:cc.cy,r:cc.r};manual=[];$("clr").hidden=false;ds=null;run(true);return}
+    const t=LH.find(o=>Math.hypot((o.cx-p.x)/o.A,(o.cy-p.y)/o.B)<=1);
+    if(t){
+      const mi=manual.findIndex(m=>Math.hypot(m.cx-t.cx,m.cy-t.cy)<.5*Math.max(m.r,t.r));
+      if(mi>=0)manual.splice(mi,1);else ign.push({cx:t.cx,cy:t.cy,r:t.r});
+      $("clr").hidden=false;
+    }
+  }
+  ds=null;run(true);
+});
+</script>
+</body>
+</html>
